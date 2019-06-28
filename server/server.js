@@ -1,9 +1,9 @@
-var express = require('express');
-var app = express();
-var server = require('http').createServer(app);
-var io = require('socket.io').listen(server);
-var Room = require('./Room.js');
-var Client = require('./controller/ClientController.js');
+var express = require('express'),
+app = express(),
+server = require('http').createServer(app),
+io = require('socket.io').listen(server),
+Room = require('./Room.js'),
+Client = require('./controller/ClientController.js');
 
 const port = process.env.port || 5000;
 server.listen(port);
@@ -15,9 +15,7 @@ var allowCrossDomain = (req, res, next) => {
   next();
 }
 
-app.configure(() => {
-  app.use(allowCrossDomain);
-});
+app.use(allowCrossDomain);
 
 app.get('/', (req, res)  => {
   console.log('here at server port: ' + port);
