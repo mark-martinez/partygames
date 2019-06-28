@@ -1,16 +1,27 @@
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
-var io = require('socket.io')(server);
+var io = require('socket.io').listen(server);
 var Room = require('./Room.js');
 var Client = require('./controller/ClientController.js');
-const port = process.env.port || 3000;
 
+const port = process.env.port || 5000;
 server.listen(port);
 
+var allowCrossDomain = (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', "*");
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+}
+
+app.configure(() => {
+  app.use(allowCrossDomain);
+});
+
 app.get('/', (req, res)  => {
-  console.log('here at server' + port);
-  res.end('<h1>Hello World</h1>');
+  console.log('here at server port: ' + port);
+  res.send('<h1>Hello Worldddd</h1>');
 });
 
 var rooms = [];
