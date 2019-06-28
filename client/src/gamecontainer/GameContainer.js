@@ -26,7 +26,8 @@ export default class GameContainer extends Component {
     }
 
     handleEmit() {
-      let socket = io("http://localhost:5000");
+      let socket = io("https://partygames-server.herokuapp.com");
+      //let socket = io("localhost:3000");
       socket.on('connect', () => {
         socket.emit('room', this.state.roomCode);
       });
