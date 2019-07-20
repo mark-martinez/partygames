@@ -1,3 +1,3 @@
-import GameContainer from "./GameContainer.js"
+import GameContainer from "./game-container.js";
 
 export default GameContainer;
