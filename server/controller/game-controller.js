@@ -97,11 +97,6 @@ GameController.GameController = class {
     }
 
     getRole() {
-      //temp
-      for (var i = 0; i<this.gameState.players.length; i++) {
-          console.log("name: " + this.gameState.players[i].client.getName() +
-                      " role: " + this.gameState.players[i].client.getRole());
-      }
     }
 
     shuffleRoles() {
@@ -111,7 +106,7 @@ GameController.GameController = class {
         var playerSize = this.gameState.players.length;
         var mafiaSize = Math.round(playerSize * 0.25);
 
-        this.shuffleArray(this.gameState.players);
+        this.gameState.players = this.shuffleArray(this.gameState.players);
 
         for (var i = 0; i < mafiaSize; i++) {
             this.gameState.players[i].client.setRole(Constants.Roles.MAFIA);

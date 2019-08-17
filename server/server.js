@@ -21,80 +21,58 @@ app.get('/', (req, res)  => {
 	res.send('<h1>Hello World</h1>');
 });
 
-var rooms = []; //Room()	//should instead be a map
-//map allows for using room a = rooms.get(code) and removing for loop iteration
-var clients = new Map();
+var rooms = new Map();		//(roomCode, Room())
+var clients = new Map();	//(socket.id, roomCode)
 
-rooms.push(new Room('000'));  //placeholder
+rooms.set('000', new Room('000'));
 
 io.sockets.on('connection', (socket) => {
 	socket.on('room', (message) => {
 		connectRoom(socket, message.userName, message.roomCode);
 	});
 
-	socket.on('disconnect', () => {
-		disconnectClient(socket);
-	});
-	
-	socket.on('startGame', (roomCode) => {
-		for (var i = 0; i < rooms.length; i++) {
-			if (rooms[i].code == roomCode) {
-				rooms[i].startGame();
-			}
-		}
+	socket.on('disconnect',	() => {
+		handleDisconnect(socket);
 	});
 
-	//socket on(MESSAGE.STATE.) 
+	socket.on('startGame', (roomCode) => {
+		rooms.get(roomCode).startGame();
+	});
 });
 
 function connectRoom(socket, name, code) {
-	if (code === '000') code = validateRoomCode(); //'000' = create room
-	var roomIndex;
-	var flag = false;
-
-	if (rooms.length > 0) {
-		for (var i = 0; i < rooms.length; i++) {
-			if (rooms[i].code == code) {
-				roomIndex = i;
-				flag = true;
-				break;
-			}
-		}
-		if (!flag) {
-			rooms.push(new Room(code));
-			console.log("NEW ROOM " + code);
-			roomIndex = rooms.length-1;
-		}
-	}
+	if (code == '000') code = validateRoomCode(); //'000' = create room
 	
-	rooms[roomIndex].addPlayer(socket, name, code);
+
+	//for some reason it's saying a duplicate doesn't exist
+	if (!(rooms.has(code))) {
+		rooms.set(code, new Room(code));
+		console.log("NEW ROOM " + code);
+	}
+	rooms.get(code).addPlayer(socket, name, code);
+
 	clients.set(socket.id, code);
 
 	socket.join(code);
 	socket.emit('updateRoomCode', code);
-	io.to(code).emit('updatePlayers', rooms[roomIndex].getPlayers());
+	io.to(code).emit('updatePlayers', rooms.get(code).getPlayers());
 
 	console.log(socket.id + " " + name + " JOINED ROOM " + code);
 }
 
-function disconnectClient(socket) {
-	var room;
+function handleDisconnect(socket) {
+	var room;	//should be a roomCode
 	if (room = clients.get(socket.id)) {
 		console.log(socket.id + " LEFT " + room);
 		clients.delete(socket.id);
 
-		if (rooms.length > 0) {
-			for (var i = 0; i < rooms.length; i++) {
-				if (rooms[i].code == room) {          
-					rooms[i].removePlayer(socket);
-					io.to(rooms[i].code).emit('updatePlayers', rooms[i].getPlayers());
+		if (rooms.size > 0) {
+			rooms.get(room).removePlayer(socket);
+			io.to(room).emit('updatePlayers', rooms.get(room).getPlayers());
 
-					if (rooms[i].isEmpty()) {
-						console.log("ROOM " + room + " DELETED")
-						rooms.splice(i, 1);
-						break;
-					}
-				}
+			if (rooms.get(room).isEmpty()) {				
+				console.log("ROOM " + room + " DELETED");
+				rooms.delete(room);
 			}
 		}
 	} else {
@@ -104,12 +82,12 @@ function disconnectClient(socket) {
 
 function validateRoomCode() {
 	code = Math.floor(Math.random() * (900)+100);
-	if (rooms.length > 0) {
-		while (rooms.some(room => room.code == code)){
+	if (rooms.size > 0) {
+		while (rooms.get(code)){
 			code = Math.floor(Math.random() * (900)+100);
 		}
-		return code;
+		return code.toString();
 	} else {
-		return code;
+		return code.toString();
 	}
 }
