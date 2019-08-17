@@ -2,6 +2,16 @@
   text-align: center;
 }
 
+body {  
+  background-color: #222222;
+  color: white;
+}
+
+.nopadding {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
 .App-logo {
   animation: App-logo-spin infinite 20s linear;
   height: 40vmin;

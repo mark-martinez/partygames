@@ -1,48 +1,36 @@
-/*
+var Client = require('../model/data/client.js');
+
 class ClientController {
     constructor(socket, name, room) {
         //should accept JSON as parameter and deconstruct here
+        this.client = new Client(name, room);
         this.socket = socket;
-        this.name = name;
-        this.currentRoom = room;
-        this.socketId = socket.id;
-        this.test();
+        //this.socketHandler();
     }
 
-    test(){
-        console.log(this.socketId + " has joined room " + this.currentRoom);
-    }
-
-    getSocketId() {
-        return this.socketId;
+    getId() {
+        return this.socket.id;
     }
 
     getName() {
-        return this.name;
+        return this.client.getName();
+    }
+    
+    getRole() {
+        return this.client.getRole();
     }
 
-    getRoom() {
-        return this.currentRoom;
+    setRole(role) {
+        this.client.setRole(role);
     }
-
-    joinRoom() {
+  
+    socketHandler() {
         //this.io.sockets.on()
+        this.socket.on('startGame', () => {
+            console.log("inside here fromm " + this.socket.id);
+        });
     }
 }
 
 
 module.exports = ClientController;
-*/
-module.exports = (socket, name, room) => {
-    var socket = socket,
-    name = name,
-    room = room;
-
-    
-
-
-    this.joinRoom = () => {
-        io.emit('data', { msg: "testest"});
-        alert("joining room");
-    }
-};

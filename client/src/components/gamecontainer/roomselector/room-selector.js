@@ -4,6 +4,7 @@ export default class RoomSelector extends Component {
     constructor() {
         super();
         this.state = {
+            userName: "Username",
             roomInputVisible: false,
             roomCode: "000"
         }
@@ -13,34 +14,42 @@ export default class RoomSelector extends Component {
     }
 
     handleCreate() {
-        this.props.onCreate();
+        this.props.onCreate(this.state);
     }
 
     handleJoin(e) {
         if ((this.state.roomInputVisible === true) && (this.state.roomCode !== "000")) {
             e.preventDefault();
             //text validate
-            this.props.onSubmit(this.state.roomCode);
+            this.props.onSubmit(this.state);
         } else {
             this.setState({ roomInputVisible: !this.state.roomInputVisible });
         }
     }
 
     handleChange(e) {
-        if (e.target.value === "") {
-            this.setState({
-                roomCode: "000"
-            });
-        } else {
-            this.setState({
-                roomCode: e.target.value
-            });
+        if (e.target.type === "text") {
+            this.setState({ userName: e.target.value })
+        }
+        if (e.target.type === "number") {
+            if (e.target.value === "") {
+                this.setState({
+                    roomCode: "000"
+                });
+            } else {
+                this.setState({
+                    roomCode: e.target.value
+                });
+            }
         }
     }
 
     render() {
         return (
             <div className="component-roomselector">
+                <form onSubmit={this.handleJoin}>
+                    <input type="text" ref={(ref) => this.code = ref} maxLength="10" name="input-name" onChange={this.handleChange} placeholder={this.state.userName}/>
+                </form>
                 <button onClick={this.handleCreate}>Create</button><br/>
                 <button onClick={this.handleJoin}>Join</button>
                 {

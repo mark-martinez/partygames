@@ -3,122 +3,113 @@ app = express(),
 server = require('http').createServer(app),
 cors = require('cors'),
 io = require('socket.io').listen(server),
-Room = require('./room.js'),
-Client = require('./controller/client-controller.js');
+Room = require('./room.js');
 
 const port = process.env.port || 5000;
 server.listen(port, () => {
-  console.log("port is: " + port) + "\n";
+	console.log("port is: " + port) + "\n";
 });
 
 app.use(cors({
-  origin: "http://localhost:3005",
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"]
+	origin: "http://localhost:3005",
+	credentials: true,
+	allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 app.get('/', (req, res)  => {
-  console.log('here at server port: ' + port);
-  res.send('<h1>Hello World</h1>');
+	console.log('here at server port: ' + port);
+	res.send('<h1>Hello World</h1>');
 });
 
-var rooms = []; //Room()
-var clients = []; //{socket.id, roomCode} OR Client(io, name, room)
+var rooms = []; //Room()	//should instead be a map
+//map allows for using room a = rooms.get(code) and removing for loop iteration
+var clients = new Map();
 
 rooms.push(new Room('000'));  //placeholder
 
 io.sockets.on('connection', (socket) => {
-  //server should only communicate with Room, Room communicates to Controller
-  //server only passes Client obj to Room to insert into Controller
-  socket.on('room', (code) => {
-    connectRoom(socket, code);
-  });
+	socket.on('room', (message) => {
+		connectRoom(socket, message.userName, message.roomCode);
+	});
 
-  socket.on('disconnect', () => {
-    disconnectClient(socket);
-  });
+	socket.on('disconnect', () => {
+		disconnectClient(socket);
+	});
+	
+	socket.on('startGame', (roomCode) => {
+		for (var i = 0; i < rooms.length; i++) {
+			if (rooms[i].code == roomCode) {
+				rooms[i].startGame();
+			}
+		}
+	});
+
+	//socket on(MESSAGE.STATE.) 
 });
 
-//move functionality to clientcontroller
-function connectRoom(socket, code) {  
-  if (code === '000') code = validateRoomCode(); //'000' = create room
+function connectRoom(socket, name, code) {
+	if (code === '000') code = validateRoomCode(); //'000' = create room
+	var roomIndex;
+	var flag = false;
 
-  if (rooms.length > 0) {
-    if (!rooms.some(r => r.code == code)) {
-          rooms.push(new Room(code));
-          rooms[rooms.length - 1].addPlayer(socket);
-      } else {
-        for (var i = 0; i < rooms.length; i++) {
-          if (rooms[i].code == code) {
-            rooms[i].addPlayer(socket);
-          }
-          break;
-        }
-      }
-  }
-  socket.join(code);
-  clients.push({ID: socket.id, room: code });
-  console.log(socket.id + " joined " + code);
+	if (rooms.length > 0) {
+		for (var i = 0; i < rooms.length; i++) {
+			if (rooms[i].code == code) {
+				roomIndex = i;
+				flag = true;
+				break;
+			}
+		}
+		if (!flag) {
+			rooms.push(new Room(code));
+			console.log("NEW ROOM " + code);
+			roomIndex = rooms.length-1;
+		}
+	}
+	
+	rooms[roomIndex].addPlayer(socket, name, code);
+	clients.set(socket.id, code);
+
+	socket.join(code);
+	socket.emit('updateRoomCode', code);
+	io.to(code).emit('updatePlayers', rooms[roomIndex].getPlayers());
+
+	console.log(socket.id + " " + name + " JOINED ROOM " + code);
 }
-
-/*
-function connectRoom(client) {  
-  if (client.currentRoom === '000') client.currentRoom = validateRoomCode(); //'000' = create room
-
-  if (rooms.length > 0) {
-    if (!rooms.some(r => r.code == client.currentRoom)) {
-          rooms.push(new Room(client.currentRoom));
-          rooms[rooms.length - 1].addPlayer(client);
-      } else {
-        for (var i = 0; i < rooms.length; i++) {
-          if (rooms[i].code == client.currentRoom) {
-            rooms[i].addPlayer(client);
-          }
-          break;
-        }
-      }
-  }
-  client.joinRoom();
-  //clients.push({ID: socket.id, room: code });
-  //client.currentRoom = room;
-  clients.push(client);
-  console.log(socket.id + " joined " + code);
-}
-*/
 
 function disconnectClient(socket) {
-  for (var i = 0; i < clients.length; i++) {
-    if (clients[i].ID == socket.id) {
-      var room = clients[i].room;
-      console.log(socket.id + " left " + room);
-      clients.splice(i, 1);
+	var room;
+	if (room = clients.get(socket.id)) {
+		console.log(socket.id + " LEFT " + room);
+		clients.delete(socket.id);
 
-      if (rooms.length > 0) {
-        for (var j = 0; j < rooms.length; j++) {
-          if (rooms[j].code == room) {
-            rooms[j].removePlayer(socket);
+		if (rooms.length > 0) {
+			for (var i = 0; i < rooms.length; i++) {
+				if (rooms[i].code == room) {          
+					rooms[i].removePlayer(socket);
+					io.to(rooms[i].code).emit('updatePlayers', rooms[i].getPlayers());
 
-            if (rooms[j].isEmpty()) {
-              console.log("room " + rooms[j].code + " removed");
-              rooms.splice(j, 1);
-            }
-            break;
-          }
-        }
-      break;
-      }
-    }
-  }
+					if (rooms[i].isEmpty()) {
+						console.log("ROOM " + room + " DELETED")
+						rooms.splice(i, 1);
+						break;
+					}
+				}
+			}
+		}
+	} else {
+		console.log(socket.id + " not found");
+	}
 }
 
 function validateRoomCode() {
-  code = Math.floor(Math.random() * (900)+100);
-  if (rooms.length > 0) {
-    while (rooms.some(room => room.code == code)){
-      code = Math.floor(Math.random() * (900)+100);
-    }
-    return code;
-  } else {
-    return code;
-  }
+	code = Math.floor(Math.random() * (900)+100);
+	if (rooms.length > 0) {
+		while (rooms.some(room => room.code == code)){
+			code = Math.floor(Math.random() * (900)+100);
+		}
+		return code;
+	} else {
+		return code;
+	}
 }
