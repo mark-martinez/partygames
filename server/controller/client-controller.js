@@ -19,7 +19,7 @@ class ClientController {
     getRole() {
         return this.client.getRole();
     }
-
+    
     setRole(role) {
         this.client.setRole(role);
     }

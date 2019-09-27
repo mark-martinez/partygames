@@ -4,46 +4,24 @@ var GameController = {};
 
 GameController.GameState = class {
     constructor() {
-      this.phase = '';
+      this.phase = Constants.Phases.LOBBY;
       this.players = null;
       this.selectedPlayer = null;
-    }
-}
-
-GameController.GamePlayer = class {
-    constructor(name, role) {
-      this.name = name;
-      this.role = role;
-    }
-
-    getName() {
-      return this.name;
-    }
-
-    setName(name) {
-      this.name = name;
-    }
-
-    getRole() {
-      return this.role;
-    }
-
-    setRole(role) {
-      this.role = role;
+      this.protectedPlayer = null;
     }
 }
 
 GameController.GameController = class {
-    constructor() {
+    constructor(room) {
       this.gameState = new GameController.GameState;
       this.gameState.players = [];
+      this.room = room;
     }
 
     start() {
       if (this.gameState.players.length > 4) {
-        console.log("Game Starting...");
+        console.log("Game starting...");
         this.gameState.phase = Constants.Phases.STARTED;
-        this.shuffleRoles();
         this.nextPhase();
       } else {
         console.log("Game must have 5 or more players.");
@@ -51,15 +29,26 @@ GameController.GameController = class {
     }
 
     end() {
-        
+      console.log("Ending game...");
+      this.gameState.phase = Constants.Phases.LOBBY;
+      this.gameState.selectedPlayer = null;
+      this.gameState.protectedPlayer = null;
+
+      for (var i = 0; i < this.gameState.players.length; i++) {
+        this.gameState.players[i].setRole(null);
+        this.room.updateClients();
+      }
     }
 
     nextPhase() {
       switch(this.gameState.phase) {
         case Constants.Phases.STARTED:
+          this.shuffleRoles();
+          this.room.updateClients();
           this.gameState.phase = Constants.Phases.NIGHT_MAFIA;
           break;
         case Constants.Phases.NIGHT_MAFIA:
+          //
           this.gameState.phase = Constants.Phases.NIGHT_DOCTOR;
           break;
         case Constants.Phases.NIGHT_DOCTOR:
@@ -80,6 +69,25 @@ GameController.GameController = class {
         default:
           this.gameState.phase = Constants.Phases.STARTED;
           break;
+			}
+			this.room.updateGameState(this.gameState.phase);
+    }
+
+    setSelectedPlayer(playerId) {
+      for (var i = 0; i < this.gameState.players.length; i++) {
+        if (this.gameState.players[i].getId() == playerId) {
+          this.selectedPlayer = this.gameState.players[i];
+        }
+        break;
+      }
+    }
+
+    setProtectedPlayer(playerId) {
+      for (var i = 0; i < this.gameState.players.length; i++) {
+        if (this.gameState.players[i].getId() == playerId) {
+          this.protectedPlayer = this.gameState.players[i];
+        }
+        break;
       }
     }
 
@@ -87,16 +95,42 @@ GameController.GameController = class {
       return this.gameState;
     }
 
-    addPlayer(p) {
-      //this.gameState.players.push(new GameController.GamePlayer(p.getName(), null));
-      this.gameState.players.push({client: p, role: null});
+    getPlayers() {
+      var playerList = [];
+      
+      for (var i = 0; i < this.gameState.players.length; i++) {        
+        playerList.push(
+        {
+          id: this.gameState.players[i].getId(), 
+          client: {
+            userName: this.gameState.players[i].getName(), role: this.gameState.players[i].getRole()}
+          }
+        );
+      }
+      
+      return playerList;
     }
 
-    removePlayer(player) {
-        //this.gameState.players.delete(player);
+    addPlayer(player) {
+      this.gameState.players.push(player);
+      this.room.updateClients();
+    }
+
+    removePlayer(socket) {
+      for (var i = 0; i < this.gameState.players.length; i++) {
+        if (this.gameState.players[i].getId() == socket.id) {
+          this.gameState.players.splice(i, 1);
+        }
+      }
     }
 
     getRole() {
+    }
+
+    listRoles() {
+      for (var i=0; i<this.gameState.players.length; i++) {
+        console.log(this.gameState.players[i].getName() + " is a " + this.gameState.players[i].getRole());
+      }
     }
 
     shuffleRoles() {

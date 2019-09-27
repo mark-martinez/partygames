@@ -1,63 +1,59 @@
 var GameController = require('./controller/game-controller.js'),
-ClientController = require('./controller/client-controller.js');
+ClientController = require('./controller/client-controller.js'),
+Constants = require('./common/constants.js');
 
 class Room {
 	constructor(roomCode, io) {
 		this.code = roomCode;
-		this.players = [];  //array of ClientController
-		this.gameController = new GameController.GameController();
+		this.gameController = new GameController.GameController(this);
 		this.io = io;
-		this.listen();
+		this.narrator = null;
+	}
+	
+	messageHandler(message) {
+		//switch statements that call class functions
+		switch(message) {
+			case Constants.ClientMessageType.START_GAME:
+				this.startGame();
+				break;
+			case Constants.ClientMessageType.SELECT_PLAYER:
+				break;
+			case Constants.ClientMessageType.PROTECT_PLAYER:
+				break;
+
+		}
 	}
 
 	startGame() {
-		if (this.players.length < 5) {
+		if (this.gameController.getPlayers().length < 5) {
      		console.log(this.code + " DOES NOT HAVE ENOUGH CLIENTS");
 		} else {
-      		this.gameController.start();
-  
-			for (var i=0; i<this.players.length; i++) {
-			console.log(this.players[i].getName() + " is a " + this.players[i].getRole());
-			}
+			this.gameController.start();
 		}
 	}
 	
 	addPlayer(socket, name, room) {
-		this.players.push(new ClientController(socket, name, room));
-    	this.gameController.addPlayer(this.players[this.players.length-1]);
+		this.gameController.addPlayer(new ClientController(socket, name, room));
 	}
 
 	removePlayer(socket) {
-		for (var i = 0; i < this.players.length; i++) {
-			if (this.players[i].getId() == socket.id){
-				console.log(this.players[i].getName() + " HAS QUIT");
-				this.players.splice(i, 1);
-				break;
-			}
-		}
-	}
-
-	findPlayerName(socket) {
-		for (var i = 0; i < this.players.length; i++) {
-			if (this.players[i].getId() == socket.id) {
-				return this.players[i].getName();
-			}
-		}
+		this.gameController.removePlayer(socket);
 	}
 
 	getPlayers() {
-		var playerNames = [];
-		for (var i = 0; i < this.players.length; i++) {
-			playerNames.push(this.players[i].getName());
-    	}
-		return playerNames;
+		return this.gameController.getPlayers();
 	}
 
 	isEmpty() {
-		if (this.players.length == 0) return true;
+		if (this.gameController.getPlayers().length == 0) return true;
 	}
-	  
-	listen() {
+	
+	updateGameState(gameState) {
+		this.io.to(this.code).emit(Constants.ServerMessageType.UPDATE_GAMESTATE, gameState);
+	}
+
+	updateClients() {
+		this.io.to(this.code).emit(Constants.ServerMessageType.UPDATE_CLIENTS, this.gameController.getPlayers());
 	}
 }
 

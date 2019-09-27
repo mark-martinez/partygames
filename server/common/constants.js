@@ -1,17 +1,21 @@
 //shared file between server and client
-//should always be the same
 
 const Constants = {}
 
 Constants.ClientMessageType = {
     CONNECT: "connectToRoom",
     DISCONNECT: "disconnectFromRoom",
-    CREATEROOM: "createRoom",
-    LEAVEROOM: "leaveRoom"
+    CREATE_ROOM: "createRoom",
+    LEAVE_ROOM: "leaveRoom",
+    START_GAME: "startGameRequest",
+    SELECT_PLAYER: "selectThisPlayer",
+    PROTECT_PLAYER: "protectThisPlayer"
 }
 
 Constants.ServerMessageType = {
-
+    UPDATE_GAMESTATE: "updatingGameState",
+    UPDATE_CLIENTS: "updatingConnectedClients",
+    UPDATE_ROOMSTATE: "updatingRoomState"
 }
 
 Constants.Phases = {
@@ -25,10 +29,6 @@ Constants.Phases = {
     VOTING: "gameVotingTime",
     DEFENSE: "gameDefenseTime",
     LYNCH: "gameLynchingTime"
-}
-
-Constants.GameState = {
-    
 }
 
 Constants.Roles = {

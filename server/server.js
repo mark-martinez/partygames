@@ -3,7 +3,11 @@ app = express(),
 server = require('http').createServer(app),
 cors = require('cors'),
 io = require('socket.io').listen(server),
-Room = require('./room.js');
+wildcard = require('socketio-wildcard')(),
+Room = require('./room.js'),
+Constants = require('./common/constants.js');
+
+io.use(wildcard);
 
 const port = process.env.port || 5000;
 server.listen(port, () => {
@@ -24,51 +28,56 @@ app.get('/', (req, res)  => {
 var rooms = new Map();		//(roomCode, Room())
 var clients = new Map();	//(socket.id, roomCode)
 
-rooms.set('000', new Room('000'));
+rooms.set('000', new Room('000', null));
 
 io.sockets.on('connection', (socket) => {
-	socket.on('room', (message) => {
-		connectRoom(socket, message.userName, message.roomCode);
-	});
-
 	socket.on('disconnect',	() => {
 		handleDisconnect(socket);
 	});
 
-	socket.on('startGame', (roomCode) => {
-		rooms.get(roomCode).startGame();
+	socket.on("*", (packet) => {
+		if (packet.data[0] == Constants.ClientMessageType.CONNECT) {
+			connectRoom(socket, packet.data[1].userName, packet.data[1].roomCode, io);
+		} else {
+			console.log(packet);
+			console.log(packet.data[1].roomCode);
+			rooms.get((packet.data[1])).messageHandler(packet.data[0]);
+		}
 	});
+/*
+	socket.on(Constants.ClientMessageType.START_GAME, (roomCode) => {
+		rooms.get(roomCode).startGame();
+		//rooms.get(roomCode).messageHandler(event)
+	});
+	*/
 });
 
-function connectRoom(socket, name, code) {
-	if (code == '000') code = validateRoomCode(); //'000' = create room
-	
+function connectRoom(socket, name, code, io) {
+	if (code == '000') code = validateRoomCode(); //'000' = create room	
 
-	//for some reason it's saying a duplicate doesn't exist
 	if (!(rooms.has(code))) {
-		rooms.set(code, new Room(code));
+		rooms.set(code, new Room(code, io));
 		console.log("NEW ROOM " + code);
 	}
 	rooms.get(code).addPlayer(socket, name, code);
-
 	clients.set(socket.id, code);
 
 	socket.join(code);
-	socket.emit('updateRoomCode', code);
-	io.to(code).emit('updatePlayers', rooms.get(code).getPlayers());
-
+	socket.emit(Constants.ServerMessageType.UPDATE_ROOMSTATE, code);
+	io.to(code).emit(Constants.ServerMessageType.UPDATE_CLIENTS, rooms.get(code).getPlayers());
+	
 	console.log(socket.id + " " + name + " JOINED ROOM " + code);
 }
 
 function handleDisconnect(socket) {
-	var room;	//should be a roomCode
+	var room;	//roomCode
 	if (room = clients.get(socket.id)) {
 		console.log(socket.id + " LEFT " + room);
 		clients.delete(socket.id);
 
 		if (rooms.size > 0) {
 			rooms.get(room).removePlayer(socket);
-			io.to(room).emit('updatePlayers', rooms.get(room).getPlayers());
+			io.to(room).emit(Constants.ServerMessageType.UPDATE_CLIENTS, rooms.get(room).getPlayers());
 
 			if (rooms.get(room).isEmpty()) {				
 				console.log("ROOM " + room + " DELETED");
